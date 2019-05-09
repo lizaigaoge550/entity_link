@@ -25,7 +25,9 @@ def remove_no_chinese(tokenizer, text, is_str=False):
     space = []
     r_text = []
     for i in range(len(text)):
-
+        if text[i] in '.!//_,$&%^*()<>+\"\'?@#-|:~{}——！\\\\，。=？、：“”‘’《》【】￥……（）':
+            space.append(i)
+            continue
         if len(tokenizer.tokenize(text[i])):
             r_text.append(text[i])
         else:
@@ -43,7 +45,7 @@ def generate_data(datas, i):
         data = json.loads(data)
         origin_len = len(data['text'])
         #first remove the punction in the end of origin len
-        data['text'] = remove_end_punction(data['text'])
+        #data['text'] = remove_end_punction(data['text'])
         text, space = remove_no_chinese(BasicTokenizer(), data['text'])
         assert len(text) == origin_len - len(space)
         tags = ['O' for _ in range(len(text))]
