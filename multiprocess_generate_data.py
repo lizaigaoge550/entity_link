@@ -13,10 +13,19 @@ def update_offset(offset, space):
     return offset
 
 
+def remove_end_punction(text):
+    for i in range(len(text)-1,-1,-1):
+        if text[i] < '\u4e00' or text[i] > '\u9fff':
+            continue
+        else:
+            break
+    return text[:i+1]
+
 def remove_no_chinese(tokenizer, text, is_str=False):
     space = []
     r_text = []
     for i in range(len(text)):
+
         if len(tokenizer.tokenize(text[i])):
             r_text.append(text[i])
         else:
@@ -33,6 +42,8 @@ def generate_data(datas, i):
     for data in datas:
         data = json.loads(data)
         origin_len = len(data['text'])
+        #first remove the punction in the end of origin len
+        data['text'] = remove_end_punction(data['text'])
         text, space = remove_no_chinese(BasicTokenizer(), data['text'])
         assert len(text) == origin_len - len(space)
         tags = ['O' for _ in range(len(text))]
