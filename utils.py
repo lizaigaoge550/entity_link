@@ -66,7 +66,10 @@ def get_char_mask(lens):
 
 def lstm_encoder(sequence, lstm, seq_lens, init_states, is_mask=False, get_final_output=False):
     batch_size = sequence.size(0)
-    seq_lens_value = seq_lens.tolist()
+    if isinstance(seq_lens, torch.Tensor):
+        seq_lens_value = seq_lens.tolist()
+    else:
+        seq_lens_value = seq_lens
     assert len(seq_lens_value) == batch_size
     sort_ind = np.argsort(seq_lens_value)[::-1].tolist()
     sort_seq_lens = [seq_lens_value[i] for i in sort_ind]
