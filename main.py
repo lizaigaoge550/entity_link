@@ -55,18 +55,20 @@ def compute_f(predicted_tags, tags, label_vocab, original_tokens, e):
                     break
 
         if len(true_mention) == 0:
-            recall = 0
-            print(t_tag)
+            f_values.append(int(len(predict_mention) == len(true_mention)))
+            #recall = 0
+            #print(t_tag)
         else:
             recall = common / len(true_mention)
-        if len(predict_mention) == 0:
-            precision = 0
-        else:
-            precision = common / len(predict_mention)
-        f_values.append((2*recall*precision) / (recall + precision + 1e-6))
-    #pickle.dump(output, open(os.path.join('valid_log', str(e)+'.pkl'), 'wb'))
+            f_values.append(recall)
+        # if len(predict_mention) == 0:
+        #     precision = 0
+        # else:
+        #     precision = common / len(predict_mention)
+        # f_values.append((2*recall*precision) / (recall + precision + 1e-6))
+    avg_f = sum(f_values) / len(f_values)
+    pickle.dump(output, open(os.path.join('valid_log', str(e)+'_'+str(avg_f)+'.pkl'), 'wb'))
     return f_values, output
-
 
 def train(model, train_dataset, test_dataset, opt, label_vocab):
     epoch = 0
@@ -135,6 +137,11 @@ def train_bert(model, train_dataset, test_dataset, opt, label_vocab):
         pickle.dump(valid_output, open(os.path.join('valid_log', str(epoch)+'.pkl'),'wb'))
         print(f'valid Loss : {sum(valid_loss) / len(valid_loss)}, valid f : {sum(valid_f) / len(valid_f)}')
 
+
+
+
+
+
 if __name__ == '__main__':
     token_vocab = Vocab('checkpoint/vocab.txt')
     label_vocab = Vocab('label_vocab.txt')
@@ -147,10 +154,9 @@ if __name__ == '__main__':
     model = DetectModel(vocab_size=token_vocab_size, input_dim=768,
                         output_dim=256, num_tags=label_vocab_size,
                         n_layer=2,
-                        constrains=[(0,0),(1,0),(1,2),(1,5),(1,7),
+                        constrains=[(0,0),(1,0),(1,2),(1,6),
                                     (2,3),(2,4),(3,3),(3,4),(4,0),
-                                    (4,1),(4,5),(4,7),(5,0),(5,1),
-                                    (5,2),(5,5),(5,7),(7,0)
+                                    (4,1),(4,6), (6,0)
                                     ]
                         )
     model.to('cuda')
