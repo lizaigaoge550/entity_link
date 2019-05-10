@@ -24,6 +24,7 @@ PAD O B I E S START END
 * detect mention
 * linking entity
 
+
 #Detect Mention
 * 提取kb中的subject, object 匹配text中的mention
 
@@ -35,4 +36,14 @@ PAD O B I E S START END
         
 * 对于不在kb中的mention, 采用lstm-crf
 
-* 
+* 去除S标签，在kb中查找S标记，直接在原文中打标
+
+* 去除文章尾部标点符号
+
+
+#Entity Linking
+* 先选出候选集，规则：Rouge score
+* entity: 
+    * 摘要，当做context
+    * Typing, 可以当做额外的特征
+    * 关系： 
