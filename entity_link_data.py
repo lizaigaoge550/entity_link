@@ -11,7 +11,7 @@ from multiprocessing import cpu_count
 
 class Mention(object):
     def __init__(self, mention:str, mention_context:str, mention_position:List[int],
-                        entity_cands:List[str], entity_context:List[str], entity_position:List[List[int]],
+                        entity_cands:List[str], entity_context:List[str],
                         entity_ids:List[str], scores:List[float]
                  ):
         self.mention = mention
@@ -19,7 +19,6 @@ class Mention(object):
         self.mention_position = mention_position
         self.entity_cands = entity_cands
         self.entity_context = entity_context
-        self.entity_position = entity_position
         self.entity_ids = entity_ids
         self.scores = scores
 
@@ -33,7 +32,7 @@ def analysis_kb():
                 return data[i]['object']
         for i in range(len(data)):
             if data[i]['predicate'] == '义项描述':
-                return subject+'是'+data[i]['object']
+                return data[i]['object']
         max_len = 0
         max_text = ''
         #找最长的描述
@@ -41,7 +40,7 @@ def analysis_kb():
             if len(data[i]['predicate']) > max_len:
                 max_len = len(data[i]['predicate'])
                 max_text = data[i]['object']
-        return subject + '是' + max_text
+        return max_text
         #s.append((subject, data))
         #raise Exception('No summarization')
 
@@ -52,9 +51,7 @@ def analysis_kb():
         if subject_id in kb_dict:
             raise Exception('key : {} exist'.format(subject_id))
         text = get_text(kb_data['data'], kb_data['subject'])
-        start_pos = text.index(kb_data['subject'])
-        kb_dict[subject_id] = {'type':kb_data['type'], 'subject':kb_data['subject'],
-                               'text': text, 'position':[start_pos, start_pos+len(kb_data['subject'])-1]}
+        kb_dict[subject_id] = {'type':kb_data['type'], 'subject':kb_data['subject'], 'text': text}
     return kb_dict
 
 
@@ -98,7 +95,7 @@ def get_cands(mention, kb_dict):
         subject = value['subject']
         score = compute_rouge_l(mention, subject)
         if score > 0.7:
-            c_l[key] =  (score, subject, value['text'], value['position'])
+            c_l[key] =  (score, subject, value['text'])
             if score > max_score:
                 max_score = score
                 max_subject = subject
@@ -132,7 +129,7 @@ def generate_entity_linking_data(datas, file_name):
                               'score':entity_cands[kb_id][0], 'max_score':max_score, 'max_subject':max_subject, 'max_id':max_id})
                     exist += 1
                 else:
-                    entity_cands[kb_id] = (0, gold_entity)
+                    entity_cands[kb_id] = (compute_rouge_l(mention, gold_entity), gold_entity, kb_dict[kb_id]['text'])
                     print('mention : {}, gold_entity : {}, ROUGE_score : {}'.format(mention, gold_entity, compute_rouge_l(mention, gold_entity)) )
                     no_exist += 1
 
@@ -140,9 +137,8 @@ def generate_entity_linking_data(datas, file_name):
                 entity_cands_score = [value[0] for key, value in entity_cands.items()]
                 entity_ids = list(entity_cands.keys())
                 entity_context = [value[2] for key, value in entity_cands.items()]
-                entity_position = [value[-1] for key, value in entity_cands.items()]
-                res.append(Mention(mention=mention, mention_context=text, mention_position=[offset, offset+len(mention)-1],
-                        entity_cands=entity_cands_str, entity_context=entity_context, entity_position=entity_position,
+                res.append(Mention(mention=mention, mention_context=text, mention_position=[int(offset), int(offset)+len(mention)-1],
+                        entity_cands=entity_cands_str, entity_context=entity_context,
                         entity_ids=entity_ids,scores = entity_cands_score
                         ))
     print('f : {} exist : {}. no_exist : {}'.format(file_name, exist, no_exist))
@@ -152,10 +148,13 @@ def generate_entity_linking_data(datas, file_name):
 
 import numpy as np
 if __name__ == '__main__':
+    #kb_datas = [line for line in open(os.path.join('ccks2019_el', 'kb_data'), encoding='utf-8').readlines()]
+    #analysis_kb()
     kb_datas = [line for line in open(os.path.join('ccks2019_el', 'kb_data'), encoding='utf-8').readlines()]
     datas = [line for line in open(os.path.join('ccks2019_el', 'train.json'), encoding='utf-8').readlines()]
     datalist = np.array_split(datas, cpu_count())
     print(len(datalist))
+#    generate_entity_linking_data(datas[0], 0)
     ps = []
     i = 0
     for data in datalist:

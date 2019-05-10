@@ -159,6 +159,39 @@ def collate_fn(batches):
     original_tokens = [batch['origin_tokens'] for batch in batches]
     return {'tokens':tokens,  'tags' : tags, 'offset':offset, 'original_tokens':original_tokens}
 
+def collate_fn_entity_link(batches):
+    '''
+    'mention_context, '
+    'mention_position, '
+    'entity_cands_id, '
+    'entity_contexts_id'
+    '''
+    mention_context_max_len = 0
+    entity_contexts_max_len = 0
+    for batch in batches:
+        mention_context_max_len = max(len(batch['mention_context']), mention_context_max_len)
+        entity_contexts_max_len = max(len(max(batch['entity_contexts_id'], len)), entity_contexts_max_len)
+    mention_context = []
+    entity_context = []
+    pos = []
+    cand_id = []
+    for batch in batches:
+        mention_context.append(torch.LongTensor(
+            batch['mention_context'] + [0]*(mention_context_max_len - len(batch['mention_context']))))
+
+        p = [context + [0]*(entity_contexts_max_len - len(context)) for context in batch['entity_contexts_id']]
+        entity_context.append(torch.LongTensor(p))
+        pos.append(batch['mention_position'])
+        cand_id.append(torch.LongTensor(batch['entity_cands_id']))
+    return {'mention_context':torch.stack(mention_context, dim=0),
+            'mention_position':pos,
+            'entity_cands_id':torch.stack(cand_id, dim=0),
+            'entity_contexts_id':torch.stack(entity_context, dim=0)
+            }
+
+
+
+
 
 
 
