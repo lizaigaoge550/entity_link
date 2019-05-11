@@ -12,7 +12,7 @@ from multiprocessing import cpu_count
 class Mention(object):
     def __init__(self, mention:str, mention_context:str, mention_position:List[int],
                         entity_cands:List[str], entity_context:List[str],
-                        entity_ids:List[str], scores:List[float]
+                        entity_ids:List[str], scores:List[float], target_id:str, target_entity:str
                  ):
         self.mention = mention
         self.mention_context = mention_context
@@ -21,6 +21,8 @@ class Mention(object):
         self.entity_context = entity_context
         self.entity_ids = entity_ids
         self.scores = scores
+        self.target_id = target_id
+        self.target_entity = target_entity
 
 
 def analysis_kb():
@@ -94,7 +96,7 @@ def get_cands(mention, kb_dict):
     for key, value in kb_dict.items():
         subject = value['subject']
         score = compute_rouge_l(mention, subject)
-        if score > 0.7:
+        if score > 0.5:
             c_l[key] =  (score, subject, value['text'])
             if score > max_score:
                 max_score = score
@@ -137,9 +139,10 @@ def generate_entity_linking_data(datas, file_name):
                 entity_cands_score = [value[0] for key, value in entity_cands.items()]
                 entity_ids = list(entity_cands.keys())
                 entity_context = [value[2] for key, value in entity_cands.items()]
+                print(f'cand size : {len(entity_cands)}')
                 res.append(Mention(mention=mention, mention_context=text, mention_position=[int(offset), int(offset)+len(mention)-1],
                         entity_cands=entity_cands_str, entity_context=entity_context,
-                        entity_ids=entity_ids,scores = entity_cands_score
+                        entity_ids=entity_ids,scores = entity_cands_score, target_id = kb_id, target_entity = gold_entity
                         ))
     print('f : {} exist : {}. no_exist : {}'.format(file_name, exist, no_exist))
     pkl.dump(p, open(os.path.join('e_d_e', str(file_name)+'e_l.pkl'),'wb'))
