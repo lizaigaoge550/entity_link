@@ -44,6 +44,7 @@ class ToTensor():
         mention_position : List = sample.mention_position
         entity_cands : List = sample.entity_cands
         entity_contexts : List[List[str]] = [list(context) for context in sample.entity_context]
+        target_id : int = sample.target_id
 
         mention_id = [self.mention_context_vocab.word2id(m) for m in mention]
         mention_context_id = [self.mention_context_vocab.word2id(m) for m in mention_context]
@@ -54,18 +55,19 @@ class ToTensor():
                 'mention_context':mention_context_id,
                 'mention_position':mention_position,
                 'entity_cands_id':entity_cands_id,
-                'entity_contexts_id':entity_contexts_id
+                'entity_contexts_id':entity_contexts_id,
+                'target_id':target_id
                 }
 
 
 
-def loading_dataset(token_vocab, label_vocab, bert=False):
+def loading_dataset(entity_context_vocab, mention_context_vocab, entity_vocab):
     datas = pickle.load(open('data.pkl','rb'))
     np.random.shuffle(datas)
     train_data = datas[:int(len(datas)*0.8)]
     test_data = datas[int(len(datas)*0.8):]
     print(f'train_data len : {len(train_data)}, test_data len : {len(test_data)}')
-    train_dataset = DataSet(train_data, transform=transforms.Compose([ToTensor(token_vocab, label_vocab)]))
-    test_dataset = DataSet(test_data, transform=transforms.Compose([ToTensor(token_vocab, label_vocab)]))
+    train_dataset = DataSet(train_data, transform=transforms.Compose([ToTensor(entity_context_vocab, mention_context_vocab, entity_vocab)]))
+    test_dataset = DataSet(test_data, transform=transforms.Compose([ToTensor(entity_context_vocab, mention_context_vocab, entity_vocab)]))
     return train_dataset, test_dataset
 
