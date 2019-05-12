@@ -81,19 +81,19 @@ def generate_data(datas, i):
             #    tags[offset] = 'S'
 
         assert len(text) == len(tags), f'{text}, {tags}'
-        generate_data.append({'tokens':text, 'tags':tags})
+        generate_data.append({'tokens':text, 'tags':tags, 'text_id':data['text_id']})
         if origin_len != text_len and len(new_mentionlist) != len(mentionlist):
             print(f'tokens : {text}, tag : {tags}, mention : {[m["mention"] for m in mentionlist]}, new_mention : {new_mentionlist}')
         count += 1
     pickle.dump(generate_data, open(os.path.join('pkl',f'{str(i)}.pkl'),'wb'))
 
 
-def combine(data_dir):
+def combine(data_dir, save_path):
     data = []
     for file_name in glob.glob(os.path.join(data_dir, '*')):
         data += pickle.load(open(file_name,'rb'))
     print(len(data))
-    pickle.dump(data, open('data.pkl','wb'))
+    pickle.dump(data, open(save_path,'wb'))
 
 
 def check_mention():
@@ -113,7 +113,7 @@ if __name__ == '__main__':
     #check_mention()
     # for data in pickle.load(open('data.pkl','rb')):
     #   print(data)
-    combine('pkl')
+    combine('pkl', 'detect_mention_dataset/data.pkl')
     # datas = [line for line in open(os.path.join('ccks2019_el', 'train.json'), encoding='utf-8').readlines()]
     # datalist = np.array_split(datas, cpu_count())
     # print(len(datalist))

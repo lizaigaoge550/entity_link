@@ -108,7 +108,7 @@ class Vocab():
 
 
 def loading_dataset(token_vocab, label_vocab, bert=False):
-    datas = pickle.load(open('data.pkl','rb'))
+    datas = pickle.load(open('detect_mention_dataset/data.pkl','rb'))
     np.random.shuffle(datas)
     train_data = datas[:int(len(datas)*0.8)]
     test_data = datas[int(len(datas)*0.8):]
@@ -142,7 +142,7 @@ class ToTensor(object):
         self.label_vocab = label_vocab
 
     def __call__(self, sample):
-        max_len = self.kwargs.get('max_token_lens', 47)
+        max_len = self.kwargs.get('max_token_lens', 50)
         tokens = [self.token_vocab.word2id(token) for token in sample['tokens']]
         tags = [self.label_vocab.word2id(tag, type='label') for tag in sample['tags']]
 
@@ -157,7 +157,7 @@ class ToTensor(object):
 
         assert len(tokens) == max_len
         assert len(tags) == max_len
-        return {'tokens': torch.LongTensor(tokens), 'tags':torch.LongTensor(tags)}
+        return {'tokens': torch.LongTensor(tokens), 'tags':torch.LongTensor(tags), 'original_tokens':sample['tokens']}
 
 
 class BertTensor(object):
@@ -188,12 +188,12 @@ class BertTensor(object):
 #max len: 47, min len : 7, avg len : 21.035833333333333
 #seq_len 47
 if __name__ == '__main__':
-    generate_data()
-    # token_vocab = Vocab('checkpoint/vocab.txt')
-    # label_vocab = Vocab('label_vocab.txt')
-    # token_vocab_size = len(token_vocab)
-    # label_vocab_size = len(label_vocab)
+    #generate_data()
+    token_vocab = Vocab('vocab/vocab.txt')
+    label_vocab = Vocab('vocab/label_vocab.txt')
+    token_vocab_size = len(token_vocab)
+    label_vocab_size = len(label_vocab)
     # print(f'token_vocab size : {len(token_vocab)}')
-    # train_dataset, test_dataset = loading_dataset(token_vocab, label_vocab, bert=True)
-    # for data in train_dataset:
-    #     print(data)
+    train_dataset, test_dataset = loading_dataset(token_vocab, label_vocab, bert=True)
+    for data in train_dataset:
+        print(data)

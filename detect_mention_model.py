@@ -12,7 +12,7 @@ class DetectModel(BaseModel):
                  constrains,
                  include_start_end_transitions=False,n_layer=1):
         super(DetectModel, self).__init__(vocab_size=vocab_size, input_dim=input_dim, n_layers=n_layer,
-                                          output_dim=output_dim, bert_weight='checkpoint/pytorch_model.bin.gz')
+                                          output_dim=output_dim)
         self.numtags = num_tags
         if self.bert_weight:
             self.tag_project_layer = nn.Linear(2*output_dim, num_tags)

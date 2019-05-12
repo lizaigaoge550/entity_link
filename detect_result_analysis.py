@@ -65,11 +65,11 @@ def mention_postprocess(mentions):
       new_mentions.append((mention[0], text))
   return new_mentions
 
-
+#epoch 6
 if __name__ == '__main__':
   #is_chinese('?')
   #printS()
-  for file in glob.glob('valid_log_tmp/*'):
+  for file in glob.glob('valid_log/*'):
     print(file)
     data = pkl.load(open(file,'rb'))
     # for i in range(len(data)):

@@ -5,6 +5,8 @@ from torch.utils.data import DataLoader
 from allennlp.nn.util import move_to_device
 import os
 from pytorch_pretrained_bert import optimization
+import torch
+
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
@@ -62,7 +64,7 @@ def compute_f(predicted_tags, tags, label_vocab, original_tokens, e):
             precision = common / len(predict_mention)
             f_values.append((2*recall*precision) / (recall + precision + 1e-6))
     avg_f = sum(f_values) / len(f_values)
-    pickle.dump(output, open(os.path.join('valid_log', str(e)+'_'+str(avg_f)+'.pkl'), 'wb'))
+    #pickle.dump(output, open(os.path.join('valid_log', str(e)+'_'+str(avg_f)+'.pkl'), 'wb'))
     return f_values, output
 
 def train(model, train_dataset, test_dataset, opt, label_vocab):
@@ -77,6 +79,7 @@ def train(model, train_dataset, test_dataset, opt, label_vocab):
             batch = move_to_device(batch, 0)
             tokens = batch['tokens']
             tags = batch['tags']
+            original_tokens = batch['original_tokens']
             opt.zero_grad()
             loss, best_paths, token_lens = model(tokens, tags)
             loss = -loss
@@ -84,10 +87,32 @@ def train(model, train_dataset, test_dataset, opt, label_vocab):
             train_loss.append(loss.item())
             opt.step()
             predicted_tags = [x for x, y in best_paths]
-            f1 = compute_f(predicted_tags, tags, label_vocab)
-            train_f += f1
-        print(f'epoch : {epoch}, loss : {sum(train_loss) / len(train_loss)}, f : {sum(train_f) / len(train_f)}')
+            #f1 = compute_f(predicted_tags, tags, label_vocab, original_tokens, epoch)
+            #train_f += f1
+        print(f'epoch : {epoch}, loss : {sum(train_loss) / len(train_loss)}')
         epoch += 1
+        model.eval()
+        valid_loss = []
+        valid_f = []
+        #valid_output = []
+        for batch in valid_loader:
+            batch = move_to_device(batch, 0)
+            tokens = batch['tokens']
+            tags = batch['tags']
+            original_tokens = batch['original_tokens']
+            opt.zero_grad()
+            loss, best_paths, _ = model(tokens, tags)
+            loss = -loss
+            valid_loss.append(loss.item())
+            predict = [x for x, y in best_paths]
+            f, output = compute_f(predict, tags, label_vocab, original_tokens, epoch)
+            valid_f += f
+            #valid_output += output
+        # pickle.dump(valid_output, open(os.path.join('valid_log_5e5', str(epoch)+'.pkl'),'wb'))
+        if not os.path.exists('detect_model_normal_0.001'):
+            os.mkdir('detect_model_normal_0.001')
+        torch.save(model.state_dict(), os.path.join('detect_model_normal_0.001', str(sum(valid_f) / len(valid_f)) + '.pt'))
+        print(f'valid Loss : {sum(valid_loss) / len(valid_loss)}, valid f : {sum(valid_f) / len(valid_f)}')
 
 from utils import collate_fn
 def train_bert(model, train_dataset, test_dataset, opt, label_vocab):
@@ -128,7 +153,10 @@ def train_bert(model, train_dataset, test_dataset, opt, label_vocab):
             f, output = compute_f(predict, tags, label_vocab, original_tokens, epoch)
             valid_f += f
             valid_output += output
-        pickle.dump(valid_output, open(os.path.join('valid_log', str(epoch)+'.pkl'),'wb'))
+        #pickle.dump(valid_output, open(os.path.join('valid_log_5e5', str(epoch)+'.pkl'),'wb'))
+        if not os.path.exists('detect_model_0.001'):
+            os.mkdir('detect_model_0.001')
+        torch.save(model.state_dict(), os.path.join('detect_model_0.001', str(sum(valid_f) / len(valid_f))+'.pt'))
         print(f'valid Loss : {sum(valid_loss) / len(valid_loss)}, valid f : {sum(valid_f) / len(valid_f)}')
 
 
@@ -137,7 +165,7 @@ def train_bert(model, train_dataset, test_dataset, opt, label_vocab):
 "text", 
 "mention_data": [{"mention": "南京南站", "offset": "0"},....]
 '''
-def generate_entity(model, test_dataset, label_vocab):
+def generate_entity(model, test_dataset, label_vocab, model_name):
     res = []
     model.eval()
     test_loader = DataLoader(test_dataset, num_workers=4, batch_size=32, collate_fn=collate_fn, drop_last=False)
@@ -156,7 +184,9 @@ def generate_entity(model, test_dataset, label_vocab):
         for text_id, text, metion_data in zip(text_ids, original_tokens, predict_mentions):
            res.append({'text_id':text_id, 'text':text, 'mention_data':metion_data})
     assert len(res) == len(test_dataset)
-    pickle.dump(res, open('valid_detect_mention.pkl','wb'))
+    if not os.path.exists('valid_detect_mention'):
+        os.mkdir('valid_detect_mention')
+    pickle.dump(res, open(os.path.join('valid_detect_mention', model_name+'.pkl'),'wb'))
 
 
 
@@ -166,12 +196,12 @@ def generate_entity(model, test_dataset, label_vocab):
 
 
 if __name__ == '__main__':
-    token_vocab = Vocab('checkpoint/vocab.txt')
-    label_vocab = Vocab('label_vocab.txt')
+    token_vocab = Vocab('vocab/vocab.txt')
+    label_vocab = Vocab('vocab/label_vocab.txt')
     token_vocab_size = len(token_vocab)
     label_vocab_size = len(label_vocab)
     print(f'token_vocab size : {len(token_vocab)}')
-    train_dataset, test_dataset = loading_dataset(token_vocab, label_vocab, bert=True)
+    train_dataset, test_dataset = loading_dataset(token_vocab, label_vocab)
 
 
     model = DetectModel(vocab_size=token_vocab_size, input_dim=768,
@@ -183,6 +213,6 @@ if __name__ == '__main__':
                                     ]
                         )
     model.to('cuda')
-    #opt = optimization.BertAdam(model.parameters(), lr=5e-5)
-    opt = optim.Adam(model.parameters(), lr=3e-4)
-    train_bert(model, train_dataset, test_dataset, opt, label_vocab)
+    #opt = optimization.BertAdam(model.parameters())
+    opt = optim.Adam(model.parameters())
+    train(model, train_dataset, test_dataset, opt, label_vocab)
