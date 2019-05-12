@@ -87,7 +87,6 @@ def compute_rouge_l(output, reference, mode='f'):
     return float(score)
 
 
-
 def get_cands(mention, kb_dict):
     c_l = {}
     max_score = 0
@@ -104,7 +103,6 @@ def get_cands(mention, kb_dict):
                 max_id = key
     c_l = OrderedDict(sorted(c_l.items(), key=lambda item:item[-1][0], reverse=True))
     return c_l, max_score, max_subject, max_id
-
 
 
 def generate_entity_linking_data(datas, file_name):
@@ -149,22 +147,52 @@ def generate_entity_linking_data(datas, file_name):
     pkl.dump(res, open(os.path.join('e_d_r', str(file_name) + 'r_l.pkl'), 'wb'))
 
 
+def generate_entity_linking_test_data(data_path, kb_tuple_path):
+    '''
+    kb_tuple_path : [(ids, subject, context)]
+    :param file_name: data_path
+    data : [{'text_id', 'text', 'mention_data'} ]
+    :return: [{'text_id', 'mention', 'mention_text', 'entity_cands', 'entity_text', 'entity_ids'}]
+    '''
+    res = []
+    datas = pkl.load(open(data_path, 'rb'))
+    kb_tuple = pkl.load(open(kb_tuple_path, 'rb'))
+    entity_ids, entity_cands, entity_context = list(zip(*kb_tuple))
+    for data in datas:
+        text_id = data['text_id']
+        text = data['text']
+        mention_datas = data['mention_data']
+        for mention_data in mention_datas:
+            mention = mention_data['mention']
+            start = mention_data['offset']
+            end = start+len(mention)-1
+            res.append({'text_id':text_id, 'mention_text':text, 'mention':mention,
+                        'mention_position':[start, end], 'entity_cands':entity_cands,
+                        'entity_text':entity_context, 'entity_ids':entity_ids
+                        })
+    pkl.dump(res, open('valid_entity_linking.pkl','wb'))
+
+
 import numpy as np
 if __name__ == '__main__':
     #kb_datas = [line for line in open(os.path.join('ccks2019_el', 'kb_data'), encoding='utf-8').readlines()]
     #analysis_kb()
     kb_datas = [line for line in open(os.path.join('ccks2019_el', 'kb_data'), encoding='utf-8').readlines()]
-    datas = [line for line in open(os.path.join('ccks2019_el', 'train.json'), encoding='utf-8').readlines()]
-    datalist = np.array_split(datas, cpu_count())
-    print(len(datalist))
-#    generate_entity_linking_data(datas[0], 0)
-    ps = []
-    i = 0
-    for data in datalist:
-        ps.append(Process(target=generate_entity_linking_data, args=(data, i,)))
-        i += 1
-    for p in ps:
-        print(f'{p.name} start.......')
-        p.start()
-    for p in ps:
-        p.join()
+    kb_dict = analysis_kb()
+    pkl.dump(kb_dict, open(os.path.join('kb_info','kb_dict.pkl'),'wb'))
+    kb_tuple = [list(kb_dict.keys()), [value['subject'] for value in kb_dict.values()], [value['text'] for value in kb_dict.values()]]
+    pkl.dump(kb_dict, open(os.path.join('kb_info', 'kb_tuple.pkl'), 'wb'))
+#     datas = [line for line in open(os.path.join('ccks2019_el', 'train.json'), encoding='utf-8').readlines()]
+#     datalist = np.array_split(datas, cpu_count())
+#     print(len(datalist))
+# #    generate_entity_linking_data(datas[0], 0)
+#     ps = []
+#     i = 0
+#     for data in datalist:
+#         ps.append(Process(target=generate_entity_linking_data, args=(data, i,)))
+#         i += 1
+#     for p in ps:
+#         print(f'{p.name} start.......')
+#         p.start()
+#     for p in ps:
+#         p.join()

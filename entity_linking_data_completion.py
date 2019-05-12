@@ -21,8 +21,6 @@ def search(dic, ls):
     return entity_cands, entity_context, entity_ids
 
 
-
-
 def complementation(data_path, kb_dict_path, output_path):
     datas = pkl.load(open(data_path, 'rb'))
     kb_dict = pkl.load(open(kb_dict_path, 'rb'))

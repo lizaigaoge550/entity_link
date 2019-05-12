@@ -90,7 +90,7 @@ class EntityLink(BaseModel):
     #
     #     return scores, loss
 
-    def forward(self, mention_contexts, mention_position, entity_contexts, entities, target):
+    def forward(self, mention_contexts, mention_position, entity_contexts, entities, target=None):
         '''
                  mention_contexts : batch, m_seq_len
                  mention_position: batch, 2 (start, end)
@@ -128,5 +128,8 @@ class EntityLink(BaseModel):
 
         scores = torch.sum(mention_emb.unsqueeze(1) * entity_embs, dim=-1)  # batch, cands
         scores = F.softmax(scores, dim=-1)
-        loss = F.multi_margin_loss(scores, target, margin=0.5)
-        return scores, loss
+        if target:
+            loss = F.multi_margin_loss(scores, target, margin=0.5)
+            return scores, loss
+        else:
+            return torch.max(scores)[-1]

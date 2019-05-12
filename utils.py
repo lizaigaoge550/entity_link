@@ -157,7 +157,9 @@ def collate_fn(batches):
     tags = torch.stack([torch.LongTensor(batch['tags']) for batch in batches])
     offset = torch.stack([torch.LongTensor(batch['offset']) for batch in batches])
     original_tokens = [batch['origin_tokens'] for batch in batches]
-    return {'tokens':tokens,  'tags' : tags, 'offset':offset, 'original_tokens':original_tokens}
+    text_ids = [batch['text_id'] for batch in batches]
+    return {'tokens':tokens,  'tags' : tags, 'offset':offset,
+            'original_tokens':original_tokens, 'text_ids':text_ids}
 
 def collate_fn_entity_link(batches):
     '''

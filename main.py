@@ -23,15 +23,12 @@ def extract_mention(tags, tokens):
                 if tags[j] == 'E':
                     res.append((i, ''.join(tokens[i:j+1])))
             i = j
-
         elif tags[i] == 'S':
             res.append((i, tokens[i]))
             i += 1
-
         else:
             i += 1
     return res
-
 
 def compute_f(predicted_tags, tags, label_vocab, original_tokens, e):
     output = []
@@ -54,18 +51,16 @@ def compute_f(predicted_tags, tags, label_vocab, original_tokens, e):
                 elif p_mention[0] > t_mention[0]:
                     break
 
-        if len(true_mention) == 0:
+        if len(true_mention) == 0 or len(predict_mention) == 0:
             f_values.append(int(len(predict_mention) == len(true_mention)))
             #recall = 0
             #print(t_tag)
+            continue
         else:
             recall = common / len(true_mention)
-            f_values.append(recall)
-        # if len(predict_mention) == 0:
-        #     precision = 0
-        # else:
-        #     precision = common / len(predict_mention)
-        # f_values.append((2*recall*precision) / (recall + precision + 1e-6))
+            #f_values.append(recall)
+            precision = common / len(predict_mention)
+            f_values.append((2*recall*precision) / (recall + precision + 1e-6))
     avg_f = sum(f_values) / len(f_values)
     pickle.dump(output, open(os.path.join('valid_log', str(e)+'_'+str(avg_f)+'.pkl'), 'wb'))
     return f_values, output
@@ -113,7 +108,6 @@ def train_bert(model, train_dataset, test_dataset, opt, label_vocab):
             loss.backward()
             train_loss.append(loss.item())
             opt.step()
-
         print(f'epoch : {epoch}, loss : {sum(train_loss) / len(train_loss)}')
         epoch += 1
         model.eval()
@@ -136,6 +130,35 @@ def train_bert(model, train_dataset, test_dataset, opt, label_vocab):
             valid_output += output
         pickle.dump(valid_output, open(os.path.join('valid_log', str(epoch)+'.pkl'),'wb'))
         print(f'valid Loss : {sum(valid_loss) / len(valid_loss)}, valid f : {sum(valid_f) / len(valid_f)}')
+
+
+'''
+"text_id"
+"text", 
+"mention_data": [{"mention": "南京南站", "offset": "0"},....]
+'''
+def generate_entity(model, test_dataset, label_vocab):
+    res = []
+    model.eval()
+    test_loader = DataLoader(test_dataset, num_workers=4, batch_size=32, collate_fn=collate_fn, drop_last=False)
+    for batch in test_loader:
+        batch = move_to_device(batch, 0)
+        text_ids = batch['text_ids']
+        tokens = batch['tokens']
+        tags = batch['tags']
+        offset = batch['offset']
+        original_tokens = batch['original_tokens']
+        _, best_paths = model.bert_forward(tokens, offset, tags, is_training=False)
+        predict = [x for x, y in best_paths]
+        p_tags = [[label_vocab.id2word(p) for p in p_tag] for p_tag in predict]
+        predict_mentions = [extract_mention(p_tag, original_tokens) for p_tag in p_tags]
+        predict_mentions = [[{'mention':item[-1], 'offset':item[0]} for item in predict_mention] for predict_mention in predict_mentions]
+        for text_id, text, metion_data in zip(text_ids, original_tokens, predict_mentions):
+           res.append({'text_id':text_id, 'text':text, 'mention_data':metion_data})
+    assert len(res) == len(test_dataset)
+    pickle.dump(res, open('valid_detect_mention.pkl','wb'))
+
+
 
 
 
@@ -161,5 +184,5 @@ if __name__ == '__main__':
                         )
     model.to('cuda')
     #opt = optimization.BertAdam(model.parameters(), lr=5e-5)
-    opt = optim.Adam(model.parameters())
+    opt = optim.Adam(model.parameters(), lr=3e-4)
     train_bert(model, train_dataset, test_dataset, opt, label_vocab)

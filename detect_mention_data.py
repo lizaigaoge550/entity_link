@@ -40,14 +40,16 @@ def generate_data():
         assert len(text) == len(tags)
         mentionlist = data['mention_data']
         for mention in mentionlist:
+            if mention['kb_id'] == 'NIL':
+                continue
             #{"kb_id": "311223", "mention": "南京南站", "offset": "0"}
             mention_str = remove_no_chinese(BasicTokenizer(), mention['mention'], is_str=True)
             offset = int(mention['offset'])
             offset = update_offset(offset, space)
             if len(mention_str) > 1:
                 tags[offset:offset+len(mention_str)] = ['B'] + ['I'] * (len(mention_str)-2) + ['E']
-            else:
-                tags[offset] = 'S'
+            #else:
+            #    tags[offset] = 'S'
 
         assert len(text) == len(tags), f'{text}, {tags}'
         generate_data.append({'tokens':text, 'tags':tags})
@@ -180,17 +182,18 @@ class BertTensor(object):
         if len(tags) > len(offset):
             tags = tags[:len(offset)]
         assert len(offset) == len(tags), f'{offset}, {tags}'
-        return {'tokens': word_idx, 'tags':tags, 'offset': offset, 'origin_tokens':sample['tokens'][:len(offset)]}
+        return {'tokens': word_idx, 'tags':tags, 'offset': offset, 'origin_tokens':sample['tokens'][:len(offset)],
+                'text_id':sample['text_id']}
 
 #max len: 47, min len : 7, avg len : 21.035833333333333
 #seq_len 47
 if __name__ == '__main__':
-    #generate_data()
-    token_vocab = Vocab('checkpoint/vocab.txt')
-    label_vocab = Vocab('label_vocab.txt')
-    token_vocab_size = len(token_vocab)
-    label_vocab_size = len(label_vocab)
-    print(f'token_vocab size : {len(token_vocab)}')
-    train_dataset, test_dataset = loading_dataset(token_vocab, label_vocab, bert=True)
-    for data in train_dataset:
-        print(data)
+    generate_data()
+    # token_vocab = Vocab('checkpoint/vocab.txt')
+    # label_vocab = Vocab('label_vocab.txt')
+    # token_vocab_size = len(token_vocab)
+    # label_vocab_size = len(label_vocab)
+    # print(f'token_vocab size : {len(token_vocab)}')
+    # train_dataset, test_dataset = loading_dataset(token_vocab, label_vocab, bert=True)
+    # for data in train_dataset:
+    #     print(data)

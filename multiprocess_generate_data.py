@@ -66,6 +66,8 @@ def generate_data(datas, i):
         mentionlist = data['mention_data']
         new_mentionlist = []
         for mention in mentionlist:
+            if mention['kb_id'] == 'NIL':
+                continue
             #{"kb_id": "311223", "mention": "南京南站", "offset": "0"}
             mention_str = remove_end_punction(mention['mention'])
             if mention_str:
@@ -111,7 +113,7 @@ if __name__ == '__main__':
     #check_mention()
     # for data in pickle.load(open('data.pkl','rb')):
     #   print(data)
-    #combine('pkl')
+    combine('pkl')
     # datas = [line for line in open(os.path.join('ccks2019_el', 'train.json'), encoding='utf-8').readlines()]
     # datalist = np.array_split(datas, cpu_count())
     # print(len(datalist))
@@ -125,19 +127,19 @@ if __name__ == '__main__':
     #     p.start()
     # for p in ps:
     #     p.join()
-    s = []
-    datas = [line for line in open(os.path.join('ccks2019_el', 'train.json'), encoding='utf-8').readlines()]
-    for data in datas:
-        data_json = json.loads(data)
-        mention_data = data_json['mention_data']
-        for mention in mention_data:
-            mention_str = mention['mention']
-            mention_str = remove_end_punction(mention_str)
-            if mention_str == '':
-                s.append(data)
-                break
-    print(s)
-    fw = open('5-9.json', 'a', encoding='utf-8')
-    for i in range(len(s)):
-        json.dump(s[i], fw)
-        fw.write('\n')
+    # s = []
+    # datas = [line for line in open(os.path.join('ccks2019_el', 'train.json'), encoding='utf-8').readlines()]
+    # for data in datas:
+    #     data_json = json.loads(data)
+    #     mention_data = data_json['mention_data']
+    #     for mention in mention_data:
+    #         mention_str = mention['mention']
+    #         mention_str = remove_end_punction(mention_str)
+    #         if mention_str == '':
+    #             s.append(data)
+    #             break
+    # print(s)
+    # fw = open('5-9.json', 'a', encoding='utf-8')
+    # for i in range(len(s)):
+    #     json.dump(s[i], fw)
+    #     fw.write('\n')
