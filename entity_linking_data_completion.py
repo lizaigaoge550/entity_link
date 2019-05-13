@@ -93,17 +93,18 @@ def complementation(data_path, kb_dict_path, output_path, avg=None):
 
 
 import os
-import glob
 
+#257078
 if __name__ == '__main__':
-    #combine(data_dir='e_d_r', save_path=os.path.join('entity_link_dataset','data.pkl'))
-    ps = []
-    for data_path in glob.glob(os.path.join('e_d_r', '*')):
-        output = data_path.split('/')[-1]
-        ps.append(Process(target=complementation, args=(data_path,os.path.join('kb_info','kb_dict.pkl'),
-                                              os.path.join('entity_link_dataset',output), 30, )))
-    for p in ps:
-        print('p : {} start'.format(p.name))
-        p.start()
-    for p in ps:
-        p.join()
+    combine(data_dir=os.path.join('entity_link_dataset', 'entity_link_dataset'),
+            save_path=os.path.join('entity_link_dataset','data.pkl'))
+    # ps = []
+    # for data_path in glob.glob(os.path.join('e_d_r', '*')):
+    #     output = data_path.split('/')[-1]
+    #     ps.append(Process(target=complementation, args=(data_path,os.path.join('kb_info','kb_dict.pkl'),
+    #                                           os.path.join('entity_link_dataset',output), 30, )))
+    # for p in ps:
+    #     print('p : {} start'.format(p.name))
+    #     p.start()
+    # for p in ps:
+    #     p.join()

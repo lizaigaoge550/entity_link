@@ -12,7 +12,7 @@ class DetectModel(BaseModel):
                  constrains,
                  include_start_end_transitions=False,n_layer=1):
         super(DetectModel, self).__init__(vocab_size=vocab_size, input_dim=input_dim, n_layers=n_layer,
-                                          output_dim=output_dim)
+                                          output_dim=output_dim, bert_weight='checkpoint/bert-base-chinese.tar.gz')
         self.numtags = num_tags
         if self.bert_weight:
             self.tag_project_layer = nn.Linear(2*output_dim, num_tags)
@@ -47,7 +47,7 @@ class DetectModel(BaseModel):
         loss = self.crf(logits, tags, mask)
         return loss, best_paths, token_lens
 
-    def bert_forward(self, tokens, offset, tags, is_training=True):
+    def bert_forward(self, tokens, offset, tags=None, is_training=True):
         mask = offset > 0
         token_lens = torch.sum(mask, dim=-1).long()
         encoder_output = self.use_bert(tokens, offset)
@@ -55,6 +55,8 @@ class DetectModel(BaseModel):
         logits = self.tag_project_layer(encoder_output)
         if not is_training:
             best_paths = self.crf.viterbi_tags(logits, mask)
+        if tags is None:
+            return best_paths
         # inputs: torch.Tensor, tags: torch.Tensor, mask
         loss = self.crf(logits, tags, mask)
         if is_training:

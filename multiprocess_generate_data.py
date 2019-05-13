@@ -10,6 +10,7 @@ import glob
 
 '。.^—-_'
 
+
 def update_offset(offset, space):
     offset -= bisect.bisect_left(space, offset)
     return offset
@@ -33,6 +34,7 @@ def remove_end_punction(text):
             return text[:i+1]
     return text[:i]
 
+
 def remove_no_chinese(tokenizer, text, is_str=False):
     space = []
     r_text = []
@@ -48,6 +50,16 @@ def remove_no_chinese(tokenizer, text, is_str=False):
         return r_text ,space
     else:
         return ''.join(r_text)
+
+def generate_develop_data(datas, i):
+    res = []
+    for data in datas:
+        data = json.loads(data)
+        data['text'] = remove_end_punction(data['text'])
+        text, space = remove_no_chinese(BasicTokenizer(), data['text'])
+        res.append({'text_id': data['text_id'], 'tokens':text})
+    pickle.dump(res, open(os.path.join('pkl', f'{str(i)}.pkl'), 'wb'))
+
 
 
 def generate_data(datas, i):
@@ -113,14 +125,14 @@ if __name__ == '__main__':
     #check_mention()
     # for data in pickle.load(open('data.pkl','rb')):
     #   print(data)
-    combine('pkl', 'detect_mention_dataset/data.pkl')
-    # datas = [line for line in open(os.path.join('ccks2019_el', 'train.json'), encoding='utf-8').readlines()]
+    combine('pkl', 'detect_mention_dataset/develop.pkl')
+    # datas = [line for line in open(os.path.join('ccks2019_el', 'develop.json'), encoding='utf-8').readlines()]
     # datalist = np.array_split(datas, cpu_count())
     # print(len(datalist))
     # ps = []
     # i = 0
     # for data in datalist:
-    #     ps.append(Process(target=generate_data, args=(data, i,)))
+    #     ps.append(Process(target=generate_develop_data, args=(data, i,)))
     #     i += 1
     # for p in ps:
     #     print(f'{p.name} start.......')

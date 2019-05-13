@@ -65,17 +65,25 @@ def mention_postprocess(mentions):
       new_mentions.append((mention[0], text))
   return new_mentions
 
+def develop_result_analysis(data_path):
+  datas = pkl.load(open(data_path,'rb'))
+  print(datas)
+
+
 #epoch 6
 if __name__ == '__main__':
+  develop_result_analysis('valid_detect_mention/ensemble.pkl')
+  # for data_path in glob.glob('valid_detect_mention/*'):
+  #   develop_result_analysis(data_path)
   #is_chinese('?')
   #printS()
-  for file in glob.glob('valid_log/*'):
-    print(file)
-    data = pkl.load(open(file,'rb'))
+  #for file in glob.glob('valid_log/*'):
+  #  print(file)
+  #  data = pkl.load(open(file,'rb'))
     # for i in range(len(data)):
     #   data[i]['t_tag_mention'] = extract_mention(data[i]['t_tag'], data[i]['tokens'])
     #   data[i]['p_tag_mention'] = extract_mention(data[i]['p_tag'], data[i]['tokens'])
     #   data[i]['p_tag_mention'] = mention_postprocess(data[i]['p_tag_mention'])
     #   data[i]['recall'] = compute_recall(data[i]['t_tag_mention'], data[i]['p_tag_mention'])
     # pkl.dump(data, open(file, 'wb'))
-    print(data)
+    #print(data)

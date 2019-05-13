@@ -20,7 +20,7 @@ class EntityLink(BaseModel):
         self.reduce_m = nn.Linear(6*hid_dim, emb_dim)
         self.w_e = nn.Linear(emb_dim, emb_dim)
         self.w_c = nn.Linear(emb_dim, emb_dim)
-        self.b = nn.Parameter(emb_dim)
+        self.b = nn.Parameter(torch.Tensor([emb_dim]))
         self.v = nn.Linear(emb_dim,1)
 
         init.normal_(self.mention_embedding.weight, -0.01, 0.01)
@@ -30,14 +30,18 @@ class EntityLink(BaseModel):
         init.xavier_normal_(self.w_e.weight)
         init.xavier_normal_(self.w_c.weight)
         init.normal_(self.b)
-        init.xavier_normal_(self.v)
+        init.xavier_normal_(self.v.weight)
 
 
 
     def soft_attention(self, embs, poss):
         res = []
-        for (emb, pos) in zip(embs.chunk(dim=0), poss.chunk(dim=0)):
-            emb = emb[poss[0]:poss[1]+1, :]
+        #print(f'emb size : {embs.size()} poss size : {poss.size()} ')
+        batch_size = embs.size(0)
+        for (emb, pos) in zip(embs.chunk(chunks=batch_size, dim=0), poss.chunk(chunks=batch_size, dim=0)):
+            emb = emb.squeeze(0)
+            pos = pos.squeeze(0)
+            emb = emb[pos[0]:pos[1]+1, :]
             attention = self.attention_w(emb)
             attention = F.softmax(attention, dim=0)
             res.append(torch.sum(attention * emb, dim=0))
@@ -51,8 +55,8 @@ class EntityLink(BaseModel):
         :return:
         '''
         assert context_emb.size(0) == position.size(0)
-        position = position.unsqueeze(-1).repeat(1,1,context_emb.size(-1))
-        emb = torch.gather(context_emb, 1, position) #batch, 2, hid_dim
+        position_expand = position.unsqueeze(-1).repeat(1,1,context_emb.size(-1))
+        emb = torch.gather(context_emb, 1, position_expand) #batch, 2, hid_dim
         soft_attention_emb = self.soft_attention(context_emb, position)
         soft_attention_emb = soft_attention_emb.unsqueeze(1)
         res = torch.cat((emb, soft_attention_emb), dim=1) #batch, 3, hid_dim
@@ -106,7 +110,10 @@ class EntityLink(BaseModel):
         mention_emb = self.generate_representation(mention_contexts_emb, mention_position)
 
         entity_embs = []
-        for entity_context, entity in zip(entity_contexts.chunk(dim=1), entities.chunk(dim=1)):
+        cands_num = entity_contexts.size(1)
+        for entity_context, entity in zip(entity_contexts.chunk(dim=1, chunks=cands_num), entities.chunk(dim=1, chunks=cands_num)):
+            entity_context = entity_context.squeeze(1)
+            entity = entity.squeeze(1)
             entity_seq_len = torch.sum(entity_context > 0, dim=1)
             entity_contexts_emb = self.entity_embedding(entity_context) #batch, e_seq_len, emb_dim
             entity_emb = self.embedding(entity) #batch, emb_dim
@@ -120,16 +127,16 @@ class EntityLink(BaseModel):
             attention = self.v(F.tanh(self.w_c(entity_contexts_emb) + self.w_e(entity_emb) + self.b)) #batch, e_seq_len, 1
             attention = F.softmax(attention, dim=1)
 
-            entity_attention_emb = torch.sum(attention * entity_contexts_emb, dim=1) #batch, emb_dim
-            entity_embs.append(entity_attention_emb)
+            entity_contexts_emb = torch.sum(attention * entity_contexts_emb, dim=1) #batch, emb_dim
+            entity_embs.append(entity_contexts_emb)
 
         entity_embs = torch.stack(entity_embs, dim=1) #batch, cands, emb_dim
         mention_emb = F.relu(self.reduce_m(mention_emb)) #batch, emb_dim
 
         scores = torch.sum(mention_emb.unsqueeze(1) * entity_embs, dim=-1)  # batch, cands
         scores = F.softmax(scores, dim=-1)
-        if target:
+        if target is not None:
             loss = F.multi_margin_loss(scores, target, margin=0.5)
             return scores, loss
         else:
-            return torch.max(scores)[-1]
+            return scores

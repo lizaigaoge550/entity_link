@@ -121,6 +121,13 @@ def loading_dataset(token_vocab, label_vocab, bert=False):
         test_dataset = DataSet(test_data, transform=transforms.Compose([BertTensor(token_vocab, label_vocab)]))
     return train_dataset, test_dataset
 
+
+def loading_develop_dataset(token_vocab, label_vocab):
+    datas = pickle.load(open('detect_mention_dataset/develop.pkl', 'rb'))
+    dataset = DataSet(datas, transform=transforms.Compose([BertTensor(token_vocab, label_vocab, is_training=False)]))
+    return dataset
+
+
 class DataSet(object):
     def __init__(self, data, transform):
         self.data = data
@@ -161,11 +168,12 @@ class ToTensor(object):
 
 
 class BertTensor(object):
-    def __init__(self, token_vocab, label_vocab, **kwargs):
+    def __init__(self, token_vocab, label_vocab, is_training=True, **kwargs):
         self.kwargs = kwargs
         self.token_vocab = token_vocab
         self.label_vocab = label_vocab
         self.tokenizer = BertTokenizer('checkpoint/vocab.txt')
+        self.is_training = is_training
 
     def chunk(self, word_idx, offset, max_seq_len):
         while len(offset) > max_seq_len:
@@ -177,13 +185,17 @@ class BertTensor(object):
         word_idx, offset = tokens_to_indices(sample['tokens'], vocab=self.token_vocab, tokenizer=self.tokenizer,
                                              max_pieces=max_len)
         assert len(offset) == len(set(offset)), '{}, {}'.format(sample['tokens'], offset)
-        tags = [self.label_vocab.word2id(tag, type='label') for tag in sample['tags']]
-        #
-        if len(tags) > len(offset):
-            tags = tags[:len(offset)]
-        assert len(offset) == len(tags), f'{offset}, {tags}'
-        return {'tokens': word_idx, 'tags':tags, 'offset': offset, 'origin_tokens':sample['tokens'][:len(offset)],
+        if self.is_training:
+            tags = [self.label_vocab.word2id(tag, type='label') for tag in sample['tags']]
+            #
+            if len(tags) > len(offset):
+                tags = tags[:len(offset)]
+            assert len(offset) == len(tags), f'{offset}, {tags}'
+            return {'tokens': word_idx, 'tags':tags, 'offset': offset, 'origin_tokens':sample['tokens'][:len(offset)],
                 'text_id':sample['text_id']}
+        else:
+            return {'tokens': word_idx, 'offset': offset, 'origin_tokens': sample['tokens'][:len(offset)],
+                    'text_id': sample['text_id']}
 
 #max len: 47, min len : 7, avg len : 21.035833333333333
 #seq_len 47

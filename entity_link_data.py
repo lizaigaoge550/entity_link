@@ -157,31 +157,35 @@ def generate_entity_linking_test_data(data_path, kb_tuple_path):
     res = []
     datas = pkl.load(open(data_path, 'rb'))
     kb_tuple = pkl.load(open(kb_tuple_path, 'rb'))
-    entity_ids, entity_cands, entity_context = list(zip(*kb_tuple))
-    for data in datas:
-        text_id = data['text_id']
+    entity_ids, entity_cands, entity_context = list(zip(kb_tuple))
+    for key, data in datas.items():
+        text_id = key
         text = data['text']
         mention_datas = data['mention_data']
         for mention_data in mention_datas:
             mention = mention_data['mention']
             start = mention_data['offset']
-            end = start+len(mention)-1
+            end = int(start)+len(mention)-1
             res.append({'text_id':text_id, 'mention_text':text, 'mention':mention,
-                        'mention_position':[start, end], 'entity_cands':entity_cands,
-                        'entity_text':entity_context, 'entity_ids':entity_ids
+                        'mention_position':[start, end], 'entity_cands':entity_cands[0],
+                        'entity_text':entity_context[0], 'entity_ids':entity_ids[0]
                         })
-    pkl.dump(res, open('valid_entity_linking.pkl','wb'))
+    pkl.dump(res, open('entity_link_dataset/valid_entity_linking.pkl','wb'))
 
 
 import numpy as np
 if __name__ == '__main__':
+    generate_entity_linking_test_data(
+        data_path='valid_detect_mention/ensemble.pkl',
+        kb_tuple_path='kb_info/kb_tuple.pkl'
+    )
     #kb_datas = [line for line in open(os.path.join('ccks2019_el', 'kb_data'), encoding='utf-8').readlines()]
     #analysis_kb()
-    kb_datas = [line for line in open(os.path.join('ccks2019_el', 'kb_data'), encoding='utf-8').readlines()]
-    kb_dict = analysis_kb()
-    pkl.dump(kb_dict, open(os.path.join('kb_info','kb_dict.pkl'),'wb'))
-    kb_tuple = [list(kb_dict.keys()), [value['subject'] for value in kb_dict.values()], [value['text'] for value in kb_dict.values()]]
-    pkl.dump(kb_dict, open(os.path.join('kb_info', 'kb_tuple.pkl'), 'wb'))
+    #kb_datas = [line for line in open(os.path.join('ccks2019_el', 'kb_data'), encoding='utf-8').readlines()]
+    #kb_dict = analysis_kb()
+    #pkl.dump(kb_dict, open(os.path.join('kb_info','kb_dict.pkl'),'wb'))
+    #kb_tuple = [list(kb_dict.keys()), [value['subject'] for value in kb_dict.values()], [value['text'] for value in kb_dict.values()]]
+    #pkl.dump(kb_tuple, open(os.path.join('kb_info', 'kb_tuple.pkl'), 'wb'))
 #     datas = [line for line in open(os.path.join('ccks2019_el', 'train.json'), encoding='utf-8').readlines()]
 #     datalist = np.array_split(datas, cpu_count())
 #     print(len(datalist))

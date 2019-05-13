@@ -1,6 +1,8 @@
 import torch
 import numpy as np
 import torch.nn as nn
+import os
+import pickle as pkl
 
 def get_final_encoder_states(encoder_outputs, mask, bidirectional=False):
     last_word_indices = mask.sum(1).long - 1
@@ -143,6 +145,7 @@ def save_to_max_nozero_len(input):
 def collate_fn(batches):
     token_max_len = 0
     offset_max_len = 0
+    tag_exist = True
     for batch in batches:
         token_max_len = max(token_max_len, len(batch['tokens']))
         offset_max_len = max(offset_max_len, len(batch['offset']))
@@ -150,16 +153,23 @@ def collate_fn(batches):
     for batch in batches:
         batch['tokens'] = batch['tokens'] + [0] * (token_max_len - len(batch['tokens']))
         batch['offset'] = batch['offset'] + [0] * (offset_max_len - len(batch['offset']))
-        batch['tags'] = batch['tags'] + [0] * (offset_max_len - len(batch['tags']))
-
+        if 'tags' in batch:
+            batch['tags'] = batch['tags'] + [0] * (offset_max_len - len(batch['tags']))
+        else:
+            tag_exist = False
 
     tokens = torch.stack([torch.LongTensor(batch['tokens']) for batch in batches])
-    tags = torch.stack([torch.LongTensor(batch['tags']) for batch in batches])
     offset = torch.stack([torch.LongTensor(batch['offset']) for batch in batches])
     original_tokens = [batch['origin_tokens'] for batch in batches]
     text_ids = [batch['text_id'] for batch in batches]
-    return {'tokens':tokens,  'tags' : tags, 'offset':offset,
+    if tag_exist:
+        tags = torch.stack([torch.LongTensor(batch['tags']) for batch in batches])
+        return {'tokens':tokens,  'tags' : tags, 'offset':offset,
             'original_tokens':original_tokens, 'text_ids':text_ids}
+    else:
+        return {'tokens': tokens, 'offset': offset,
+                'original_tokens': original_tokens, 'text_ids': text_ids}
+
 
 def collate_fn_entity_link(batches):
     '''
@@ -172,7 +182,7 @@ def collate_fn_entity_link(batches):
     entity_contexts_max_len = 0
     for batch in batches:
         mention_context_max_len = max(len(batch['mention_context']), mention_context_max_len)
-        entity_contexts_max_len = max(len(max(batch['entity_contexts_id'], len)), entity_contexts_max_len)
+        entity_contexts_max_len = max(len(max(batch['entity_contexts_id'], key=len)), entity_contexts_max_len)
     mention_context = []
     entity_context = []
     pos = []
@@ -185,18 +195,39 @@ def collate_fn_entity_link(batches):
         entity_context.append(torch.LongTensor(p))
         pos.append(batch['mention_position'])
         cand_id.append(torch.LongTensor(batch['entity_cands_id']))
-    return {'mention_context':torch.stack(mention_context, dim=0),
-            'mention_position':pos,
+
+
+    if 'target_position' in batches[0]:
+        target = [batch['target_position'] for batch in batches]
+        return {'mention_context':torch.stack(mention_context, dim=0),
+            'mention_position':torch.LongTensor(pos),
             'entity_cands_id':torch.stack(cand_id, dim=0),
-            'entity_contexts_id':torch.stack(entity_context, dim=0)
+            'entity_contexts_id':torch.stack(entity_context, dim=0),
+            'target':torch.LongTensor(target)
             }
+    else:
+        mentions = [batch['mention'] for batch in batches]
+        text_ids = [batch['text_id'] for batch in batches]
+        return {
+            'mention_context': torch.stack(mention_context, dim=0),
+            'mention_position': torch.LongTensor(pos),
+            'entity_cands_id': torch.stack(cand_id, dim=0),
+            'entity_contexts_id': torch.stack(entity_context, dim=0),
+            'mention':mentions,
+            'text_id':text_ids
+        }
+
+def make_toy_dataset(data_path):
+    output_dir = os.path.join(*data_path.split('/')[:-1])
+    data = pkl.load(open(data_path,'rb'))
+    pkl.dump(data[:10], open(os.path.join(output_dir, 'toy.pkl'), 'wb'))
 
 
 
 
 
-
-
+if __name__ == '__main__':
+    make_toy_dataset(data_path='entity_link_dataset/data.pkl')
 
 
 
