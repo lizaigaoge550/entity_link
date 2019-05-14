@@ -58,13 +58,14 @@ class TestToTensor():
 
     def __call__(self, sample):
         mention : str = sample['mention']
-        mention_context : List = list(sample['mention_context'])
+        mention_context : List = list(sample['mention_text'])
         mention_position : List = sample['mention_position']
+        mention_position : List = list(map(lambda a:int(a), mention_position))
         entity_cands : List = sample['entity_ids']
-        entity_contexts : List[List[str]] = [list(context) for context in sample['entity_context']]
+        entity_contexts : List[List[str]] = [list(context) for context in sample['entity_text']]
 
         mention_context_id = [self.mention_context_vocab.word2id(m) for m in mention_context]
-        entity_cands_id = [self.entity_vocab.word2id(m) for m in entity_cands]
+        entity_cands_id = [self.entity_vocab.word2id(m, type='label') for m in entity_cands]
         entity_contexts_id = [[self.entity_context_vocab.word2id(m[i]) for i in range(len(m))] for m in entity_contexts]
 
         return {'text_id':sample['text_id'],
@@ -85,11 +86,17 @@ def loading_dataset(entity_context_vocab, mention_context_vocab, entity_vocab):
     test_dataset = DataSet(test_data, transform=transforms.Compose([ToTensor(entity_context_vocab, mention_context_vocab, entity_vocab)]))
     return train_dataset, test_dataset
 
+def loading_predict_dataset(entity_context_vocab, mention_context_vocab, entity_vocab):
+    datas = pickle.load(open('entity_link_dataset/valid_entity_linking.pkl','rb'))
+    print(f'data len : {len(datas)}')
+    dataset = DataSet(datas, transform=transforms.Compose([TestToTensor(entity_context_vocab, mention_context_vocab, entity_vocab)]))
+    return dataset
+
+
 if __name__ == '__main__':
     entity_context_vocab = Vocab('vocab/entity_context_vocab.txt')
     mention_context_vocab = Vocab('vocab/vocab.txt')
     entity_vocab = Vocab('vocab/entity_vocab.txt')
-    datas = pkl.load(open('entity_link_dataset/data.pkl','rb'))
-    for d in DataSet(datas, transform=transforms.Compose([ToTensor(entity_context_vocab, mention_context_vocab, entity_vocab)])):
+    datas = pkl.load(open('entity_link_dataset/valid_entity_linking.pkl','rb'))
+    for d in DataSet(datas, transform=transforms.Compose([TestToTensor(entity_context_vocab, mention_context_vocab, entity_vocab)])):
         print(d)
-

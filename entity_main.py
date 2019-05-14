@@ -8,7 +8,7 @@ from utils import collate_fn_entity_link
 from entity_linking_model import EntityLink
 import torch
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 '''
 'mention':mention_id,
@@ -76,9 +76,10 @@ def train(model, train_dataset, test_dataset, opt):
         epoch += 1
 
 
+from tqdm import tqdm
 def predict(model, dataset, output_path):
     res = []
-    dataloader =  DataLoader(dataset,num_workers=12, batch_size=32, shuffle=True, collate_fn=collate_fn_entity_link)
+    dataloader =  DataLoader(dataset,num_workers=1, batch_size=1, shuffle=False, collate_fn=collate_fn_entity_link)
     for batch in tqdm(dataloader):
         batch = move_to_device(batch, 0)
         mention_context = batch['mention_context']
@@ -87,8 +88,20 @@ def predict(model, dataset, output_path):
         entity_context = batch['entity_contexts_id']
         mention = batch['mention']
         text_id = batch['text_id']
-        scores = model(mention_context, mention_position, entity_context, entity_cands)
-        vals, ids = torch.max(scores, dim=-1)
+        #spilt entity_cands, entity_context
+        entity_cands_list = entity_cands.split(30)
+        entity_context_list = entity_context.split(30)
+        assert len(entity_cands_list) == len(entity_context_list)
+        mention_context.cuda(0)
+        mention_position.cuda(0)
+        s = 0
+        id = -1
+        for entity_cand, entity_con in zip(entity_cands_list, entity_context_list):
+            entity_cand.cuda(0)
+            entity_con.cuda(0)
+            scores = model(mention_context, mention_position, entity_con, entity_cand)
+            vals, ids = torch.max(scores, dim=-1)
+            print(vals, ids)
         for i, (t_id, m, id) in enumerate(zip(text_id, mention, ids.item())):
             res.append({'text_id':t_id, 'mention':m, 'kb_id' : entity_cands[i][id]})
     if not os.path.exists('entity_link_valid_dataset'):
