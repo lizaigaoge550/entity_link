@@ -29,7 +29,7 @@ def get_accuracy(scores, target):
 
 def train(model, train_dataset, test_dataset, opt):
     epoch = 0
-    step = 0
+    step = 6000
     while True:
         model.train()
         train_loader = DataLoader(train_dataset,num_workers=12, batch_size=32, shuffle=True, collate_fn=collate_fn_entity_link)
@@ -49,35 +49,37 @@ def train(model, train_dataset, test_dataset, opt):
             loss.backward()
             train_loss.append(loss.item())
             opt.step()
-            print(f'epoch : {epoch}, step : {step}, loss : {train_loss[-1]}, accu : {train_acc[-1]}')
             step += 1
             if step % 1000 == 0:
                 torch.save(model.state_dict(), os.path.join('entity_model', str(step) + '.pt'))
-        print(f'epoch : {epoch}, loss : {sum(train_loss) / len(train_loss)}, accu : {sum(train_acc) / len(train_acc)}')
+                print(f'epoch : {epoch}, loss : {sum(train_loss) / len(train_loss)}, accu : {sum(train_acc) / len(train_acc)}')
+
+                model.eval()
+                eval_loss = []
+                eval_acc = []
+                for batch in valid_loader:
+                    batch = move_to_device(batch, 0)
+                    mention_context = batch['mention_context']
+                    mention_position = batch['mention_position']
+                    entity_cands = batch['entity_cands_id']
+                    entity_context = batch['entity_contexts_id']
+                    target = batch['target']
+                    scores, loss = model(mention_context, mention_position, entity_context, entity_cands, target)
+
+                    eval_loss.append(loss.item())
+                    eval_acc.append(get_accuracy(scores, target))
+                print(f'eval loss : {sum(eval_loss) / len(eval_loss)}, accu : {sum(eval_acc) / len(eval_acc)}')
+                #torch.save(model.state_dict(), os.path.join('entity_model', str(sum(eval_acc) / len(eval_acc))+'.pt'))
+                model.train()
+                train_loss = []
+                train_acc = []
         epoch += 1
-        model.eval()
-        eval_loss = []
-        eval_acc = []
-        for batch in valid_loader:
-            batch = move_to_device(batch, 0)
-            mention_context = batch['mention_context']
-            mention_position = batch['mention_position']
-            entity_cands = batch['entity_cands_id']
-            entity_context = batch['entity_contexts_id']
-            target = batch['target']
-            scores, loss = model(mention_context, mention_position, entity_context, entity_cands, target)
-
-            eval_loss.append(loss.item())
-            eval_acc.append(get_accuracy(scores.item(), target))
-        print(f'eval loss : {sum(eval_loss) / len(eval_loss)}, accu : {sum(eval_acc) / len(eval_acc)}')
-        torch.save(model.state_dict(), os.path.join('entity_model', str(sum(eval_acc) / len(eval_acc))+'.pt'))
-
 
 
 def predict(model, dataset, output_path):
     res = []
-    dataloader =  DataLoader(dataset,num_workers=4, batch_size=32, shuffle=True, collate_fn=collate_fn_entity_link)
-    for batch in dataloader:
+    dataloader =  DataLoader(dataset,num_workers=12, batch_size=32, shuffle=True, collate_fn=collate_fn_entity_link)
+    for batch in tqdm(dataloader):
         batch = move_to_device(batch, 0)
         mention_context = batch['mention_context']
         mention_position = batch['mention_position']
@@ -91,7 +93,7 @@ def predict(model, dataset, output_path):
             res.append({'text_id':t_id, 'mention':m, 'kb_id' : entity_cands[i][id]})
     if not os.path.exists('entity_link_valid_dataset'):
         os.mkdir('entity_link_valid_dataset')
-    pkl.dump(res, open(os.path.join('entity_link_valid_dataset', output_path), 'wb'))
+    pkl.dump(res, open(os.path.join('entity_link_valid_dataset', output_path+'.pkl'), 'wb'))
 
 
 
@@ -108,7 +110,7 @@ if __name__ == '__main__':
     print(f'entity_vocab size : {len(entity_vocab)}')
 
 
-    train_dataset, test_dataset = loading_dataset(entity_context_vocab, mention_context_vocab, entity_vocab)
+    #train_dataset, test_dataset = loading_dataset(entity_context_vocab, mention_context_vocab, entity_vocab)
 
     model = EntityLink(len(mention_context_vocab),
                        len(entity_context_vocab),
@@ -119,5 +121,7 @@ if __name__ == '__main__':
     model.to('cuda')
     #opt = optimization.BertAdam(model.parameters(), lr=5e-5)
     opt = optim.Adam(model.parameters())
-    #model.load_state_dict(torch.load())
-    train(model, train_dataset, test_dataset, opt)
+    model.load_state_dict(torch.load('entity_model/6000.pt'))
+    #train(model, train_dataset, test_dataset, opt)
+    predict_dataset = loading_predict_dataset(entity_context_vocab, mention_context_vocab, entity_vocab)
+    predict(model, predict_dataset, 'first')
